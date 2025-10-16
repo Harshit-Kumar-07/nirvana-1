@@ -14,7 +14,6 @@
   --maxwidth: 1100px;
 }
 
-/* Light theme variables (overrides) */
 body.light {
   --bg-1: #f6fbff;
   --bg-2: #e7f0ff;
@@ -37,7 +36,6 @@ body{
   overflow:hidden;
 }
 
-/* topbar */
 .topbar{
   width:100%;
   max-width:var(--maxwidth);
@@ -56,7 +54,6 @@ body{
 .clock{font-weight:600;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid var(--glass-border);font-size:0.95rem}
 .icon-btn{background:transparent;border:none;color:inherit;padding:8px;border-radius:8px;cursor:pointer;font-size:1.05rem}
 
-/* stage main area */
 .stage{
   width:100%;
   max-width:var(--maxwidth);
@@ -67,7 +64,6 @@ body{
   z-index:10;
 }
 
-/* Card base */
 .card{
   background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
   border-radius:var(--radius);
@@ -76,7 +72,6 @@ body{
   border:1px solid var(--glass-border);
 }
 
-/* auth card */
 .auth-card{
   width:420px;
   min-height:260px;
@@ -98,12 +93,10 @@ body{
 .btn.full{width:100%}
 .btn.primary.full{box-shadow:none}
 
-/* forms */
 .form{width:100%;display:flex;flex-direction:column;gap:10px;align-items:center}
 .form input{width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
 .form input::placeholder{color:var(--muted)}
 
-/* new: label and select styling */
 .form label {
   display: flex;
   flex-direction: column;
@@ -120,15 +113,33 @@ body{
   color: inherit;
 }
 
-/* dashboard card takes rest of width */
+/* added */
+.teacher-controls {
+  margin-top: 20px;
+}
+.student-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.student-list .student-item {
+  padding: 8px 12px;
+  background: var(--card-bg);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.student-list .student-item:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+/* existing dashboard, stats, history etc */
 .dashboard{
   flex:1;
   display:flex;
   flex-direction:column;
   gap:18px;
 }
-
-/* dashboard header */
 .dashboard-header{
   display:flex;
   justify-content:space-between;
@@ -140,7 +151,6 @@ body{
 .small{font-size:0.85rem}
 .linkish{color:var(--primary);cursor:pointer;font-weight:700}
 
-/* stats grid */
 .grid-3{
   display:grid;
   grid-template-columns: 240px 1fr 1fr;
@@ -155,14 +165,12 @@ body{
 .stat-value{font-size:1.7rem;font-weight:800}
 .donut-wrap{width:100%;display:flex;justify-content:center;align-items:center}
 
-/* donut svg */
 .donut{width:88px;height:88px;transform:rotate(-90deg)}
 .donut-bg{fill:none;stroke:rgba(255,255,255,0.06);stroke-width:2.6}
 .donut-value{fill:none;stroke:linear-gradient(90deg,var(--primary),var(--accent));stroke-width:2.8;stroke-linecap:round;transition:stroke-dasharray 600ms cubic-bezier(.2,.9,.2,1)}
 .donut-text{font-size:6px;text-anchor:middle;fill:var(--muted);transform:rotate(90deg);dominant-baseline:middle}
 .donut-value{stroke:#3b82f6}
 
-/* history */
 .history-card{background:var(--card-bg);padding:14px;border-radius:12px}
 .history-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .history-list{display:flex;flex-wrap:wrap;gap:8px}
@@ -174,20 +182,16 @@ body{
 .history-item.present{border-left:6px solid #10b981}
 .history-item.today{box-shadow:0 6px 18px rgba(59,130,246,0.06)}
 
-/* footer */
 .footer{margin-top:14px;margin-bottom:22px;opacity:0.7}
 
-/* hidden utility */
 .hidden{display:none}
 
-/* responsive */
 @media (max-width:960px){
   .stage{padding:14px;gap:12px;flex-direction:column;align-items:center}
   .auth-card{width:100%}
   .grid-3{grid-template-columns: 1fr}
 }
 
-/* particles & bg gradient */
 .bg-gradient{
   position:fixed;inset:0;z-index:0;
   background: linear-gradient(120deg,#031027 0%, #071b2f 30%, #0f1724 60%, #0a0f1f 100%);
