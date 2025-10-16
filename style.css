@@ -103,6 +103,23 @@ body{
 .form input{width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
 .form input::placeholder{color:var(--muted)}
 
+/* new: label and select styling */
+.form label {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.form label select {
+  margin-top: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.04);
+  background: transparent;
+  color: inherit;
+}
+
 /* dashboard card takes rest of width */
 .dashboard{
   flex:1;
