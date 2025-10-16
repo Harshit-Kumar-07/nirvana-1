@@ -1,33 +1,30 @@
-/* -----------------------
-   Smart Attendance v2
-   + role-based (teacher vs student)
-   + teacher can view all students and mark for them
-   + formatted date in history (day Month year)
-   ----------------------- */
-
 const $ = id => document.getElementById(id);
 
 // Elements
+const clubSelectDiv = $('clubSelectDiv');
+const clubSelect = $('clubSelect');
+const subOptionDiv = $('subOptionDiv');
+const subOptionSelect = $('subOptionSelect');
+const clubContinueBtn = $('clubContinueBtn');
+
+const authOptions = $('authOptions');
 const showLogin = $('showLogin');
 const showRegister = $('showRegister');
-const authOptions = $('authOptions');
 
 const loginForm = $('loginForm');
 const registerForm = $('registerForm');
 const loginUsername = $('loginUsername');
 const loginPassword = $('loginPassword');
+const loginRole = $('loginRole');
 const regUsername = $('regUsername');
 const regPassword = $('regPassword');
-const loginSubmit = $('loginSubmit');
-const registerSubmit = $('registerSubmit');
+const regRole = $('regRole');
+
 const goRegister = $('goRegister');
 const goLogin = $('goLogin');
 
-const loginRole = $('loginRole');
-const regRole = $('regRole');
-
-const dashboardCard = $('dashboardCard');
 const authCard = $('authCard');
+const dashboardCard = $('dashboardCard');
 const welcomeUser = $('welcomeUser');
 const joinedAt = $('joinedAt');
 
@@ -52,39 +49,73 @@ const clockNode = $('clock');
 let users = JSON.parse(localStorage.getItem('sas_users') || '{}');
 let currentUser = localStorage.getItem('sas_current') || null;
 let historyViewCompact = true;
-let viewingUser = null;  // For teacher: which student is currently in view
+let viewingUser = null;
+let selectedClub = null;
+let selectedSubOption = null;
+
+// Map of club → suboptions
+const subOptionsMap = {
+  tech: ["Webathon", "Hackathon", "Monthly Coding Series"],
+  cultural: ["Extravaganza", "Gragest", "Talent Hunt"],
+  sports: ["Basketball", "Volleyball", "Cricket"]
+};
 
 // Utils
-function saveUsers(){ localStorage.setItem('sas_users', JSON.stringify(users)); }
-function saveCurrent(){
-  if (currentUser) localStorage.setItem('sas_current', currentUser);
-  else localStorage.removeItem('sas_current');
-}
-function todayISO(){ const d = new Date(); return d.toISOString().slice(0,10); }
+function saveUsers() { localStorage.setItem('sas_users', JSON.stringify(users)); }
+function saveCurrent() { if (currentUser) localStorage.setItem('sas_current', currentUser); else localStorage.removeItem('sas_current'); }
+function todayISO() { return new Date().toISOString().slice(0,10); }
 function isoToDisplay(iso) {
   const d = new Date(iso);
   const day = d.getDate();
-  const monthNames = [
-    "January","February","March","April","May","June",
-    "July","August","September","October","November","December"
-  ];
+  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const month = monthNames[d.getMonth()];
   const year = d.getFullYear();
   return `${day} ${month} ${year}`;
 }
 
-// Auth UI
-function showLoginForm(){
+// --- Club & suboption selection logic ---
+clubSelect.addEventListener('change', () => {
+  selectedClub = clubSelect.value;
+  const opts = subOptionsMap[selectedClub] || [];
+  subOptionSelect.innerHTML = '';
+  const defaultOpt = document.createElement('option');
+  defaultOpt.value = '';
+  defaultOpt.textContent = 'Choose event';
+  defaultOpt.disabled = true;
+  defaultOpt.selected = true;
+  subOptionSelect.appendChild(defaultOpt);
+  opts.forEach(opt => {
+    const el = document.createElement('option');
+    el.value = opt;
+    el.textContent = opt;
+    subOptionSelect.appendChild(el);
+  });
+  subOptionDiv.classList.remove('hidden');
+  clubContinueBtn.disabled = true;
+});
+
+subOptionSelect.addEventListener('change', () => {
+  selectedSubOption = subOptionSelect.value;
+  clubContinueBtn.disabled = (!selectedSubOption);
+});
+
+clubContinueBtn.addEventListener('click', () => {
+  clubSelectDiv.classList.add('hidden');
+  authOptions.classList.remove('hidden');
+});
+
+// --- Auth UI ---
+function showLoginForm() {
   authOptions.classList.add('hidden');
   registerForm.classList.add('hidden');
   loginForm.classList.remove('hidden');
 }
-function showRegisterForm(){
+function showRegisterForm() {
   authOptions.classList.add('hidden');
   loginForm.classList.add('hidden');
   registerForm.classList.remove('hidden');
 }
-function resetAuthUI(){
+function resetAuthUI() {
   authOptions.classList.remove('hidden');
   loginForm.classList.add('hidden');
   registerForm.classList.add('hidden');
@@ -95,7 +126,8 @@ showRegister.addEventListener('click', showRegisterForm);
 goRegister.addEventListener('click', showRegisterForm);
 goLogin.addEventListener('click', showLoginForm);
 
-registerSubmit.addEventListener('click', e => {
+// --- Registration ---
+registerSubmit.addEventListener('click', (e) => {
   e.preventDefault();
   const u = regUsername.value.trim();
   const p = regPassword.value.trim();
@@ -105,10 +137,17 @@ registerSubmit.addEventListener('click', e => {
     return;
   }
   if (users[u]) {
-    alert('User exists — choose another username');
+    alert('User exists');
     return;
   }
-  users[u] = { password: p, role: r, attendance: [], created: todayISO() };
+  users[u] = {
+    password: p,
+    role: r,
+    attendance: [],
+    created: todayISO(),
+    club: selectedClub,
+    subOption: selectedSubOption
+  };
   saveUsers();
   alert('Account created. Log in now.');
   regUsername.value = '';
@@ -117,7 +156,8 @@ registerSubmit.addEventListener('click', e => {
   showLoginForm();
 });
 
-loginSubmit.addEventListener('click', e => {
+// --- Login ---
+loginSubmit.addEventListener('click', (e) => {
   e.preventDefault();
   const u = loginUsername.value.trim();
   const p = loginPassword.value.trim();
@@ -131,7 +171,7 @@ loginSubmit.addEventListener('click', e => {
     return;
   }
   if (users[u].role !== r) {
-    alert(`You are not a ${r}. Please login with correct role.`);
+    alert(`You are not a ${r}`);
     return;
   }
   currentUser = u;
@@ -142,55 +182,53 @@ loginSubmit.addEventListener('click', e => {
   openDashboard();
 });
 
-// Dashboard & rendering
-function openDashboard(){
+// --- Dashboard / Rendering ---
+function openDashboard() {
   authCard.classList.add('hidden');
   dashboardCard.classList.remove('hidden');
   renderDashboard();
 }
 
-function renderDashboard(){
+function renderDashboard() {
   if (!currentUser || !users[currentUser]) {
     logout();
     return;
   }
   const me = users[currentUser];
-  welcomeUser.textContent = `Welcome, ${currentUser} (${me.role})`;
+  welcomeUser.textContent = `Welcome, ${currentUser} (${me.role}) — ${me.club || ''} / ${me.subOption || ''}`;
   joinedAt.textContent = `Joined: ${new Date(me.created).toLocaleDateString()}`;
 
-  // If teacher, show student list
   if (me.role === 'teacher') {
     teacherControls.classList.remove('hidden');
-    attendanceSection.classList.add('hidden');
+    attendanceSection.classList.remove('hidden');
+    markBtn.classList.remove('hidden');
     renderStudentList();
   } else {
-    // student view: show their own attendance section
     teacherControls.classList.add('hidden');
     attendanceSection.classList.remove('hidden');
+    markBtn.classList.add('hidden');
     viewingUser = currentUser;
     renderAttendanceFor(viewingUser);
   }
 }
 
-// Render list of students
 function renderStudentList() {
   studentList.innerHTML = '';
-  for (const uname in users) {
+  Object.keys(users).forEach(uname => {
     if (users[uname].role === 'student') {
-      const btn = document.createElement('div');
-      btn.className = 'student-item';
-      btn.textContent = uname;
-      btn.addEventListener('click', () => {
+      const st = users[uname];
+      const el = document.createElement('div');
+      el.className = 'student-item';
+      el.textContent = `${uname} (${st.club}/${st.subOption})`;
+      el.addEventListener('click', () => {
         viewingUser = uname;
-        attendanceSection.classList.remove('hidden');
-        renderAttendanceFor(uname);
+        renderAttendanceFor(viewingUser);
       });
-      studentList.appendChild(btn);
+      studentList.appendChild(el);
     }
-  }
+  });
 }
 
-// Render attendance view for a particular user
 function renderAttendanceFor(uname) {
   const udata = users[uname];
   if (!udata) return;
@@ -199,27 +237,16 @@ function renderAttendanceFor(uname) {
   totalPresent.textContent = attendance.length;
 
   const last30 = lastNDaysList(30);
-  const presentLast30 = last30.filter(d => attendance.includes(d)).length;
-  const pct = Math.round((presentLast30 / last30.length) * 100);
+  const presentCount = last30.filter(d => attendance.includes(d)).length;
+  const pct = Math.round((presentCount / last30.length) * 100);
   updateDonut(pct);
 
   streakVal.textContent = calcStreak(attendance);
 
   renderHistory(attendance);
-
-  // Mark attendance button logic
-  if (attendance.includes(todayISO())) {
-    markBtn.classList.add('outline');
-    markBtn.textContent = 'Marked Today ✓';
-    markBtn.disabled = true;
-  } else {
-    markBtn.classList.remove('outline');
-    markBtn.textContent = 'Mark Attendance';
-    markBtn.disabled = false;
-  }
 }
 
-// Utility: donut update
+// --- Donut / Stats functions ---
 function updateDonut(pct) {
   donutValue.setAttribute('stroke-dasharray', `${pct} ${100 - pct}`);
   donutText.textContent = `${pct}%`;
@@ -247,9 +274,7 @@ function calcStreak(attArr) {
     if (s.has(iso)) {
       streak++;
       d.setDate(d.getDate() - 1);
-    } else {
-      break;
-    }
+    } else break;
   }
   return streak;
 }
@@ -258,36 +283,25 @@ function renderHistory(attendance) {
   historyList.innerHTML = '';
   const display = attendance.slice().reverse();
   if (display.length === 0) {
-    const el = document.createElement('div');
-    el.className = 'muted';
-    el.textContent = 'No attendance yet.';
-    historyList.appendChild(el);
+    const e = document.createElement('div');
+    e.className = 'muted';
+    e.textContent = 'No attendance yet.';
+    historyList.appendChild(e);
     return;
   }
-  if (historyViewCompact) {
-    display.forEach(iso => {
-      const el = document.createElement('div');
-      el.className = 'history-item present';
-      if (iso === todayISO()) el.classList.add('today');
-      el.textContent = isoToDisplay(iso);
-      historyList.appendChild(el);
-    });
-  } else {
-    display.forEach(iso => {
-      const el = document.createElement('div');
-      el.className = 'history-item present';
-      el.style.minWidth = '100%';
-      el.innerHTML = `<strong>${isoToDisplay(iso)}</strong> — ${iso}`;
-      historyList.appendChild(el);
-    });
-  }
+  display.forEach(iso => {
+    const e = document.createElement('div');
+    e.className = 'history-item present';
+    if (iso === todayISO()) e.classList.add('today');
+    e.textContent = isoToDisplay(iso);
+    historyList.appendChild(e);
+  });
 }
 
-// Mark attendance (for current viewingUser), only teacher allowed
+// --- Mark Attendance (only teacher) ---
 markBtn.addEventListener('click', () => {
   if (!currentUser) return;
-  const me = users[currentUser];
-  if (me.role !== 'teacher' && currentUser !== viewingUser) {
+  if (users[currentUser].role !== 'teacher') {
     alert('Only teacher can mark attendance');
     return;
   }
@@ -306,7 +320,7 @@ markBtn.addEventListener('click', () => {
   flash(`Marked attendance for ${viewingUser} ✅`);
 });
 
-// Export CSV for current viewingUser
+// --- Export / Clear / Toggle History ---
 exportCsvBtn.addEventListener('click', () => {
   if (!viewingUser) return;
   const u = users[viewingUser];
@@ -314,8 +328,8 @@ exportCsvBtn.addEventListener('click', () => {
   (u.attendance || []).forEach(iso => {
     rows.push([viewingUser, iso, isoToDisplay(iso)]);
   });
-  const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
-  const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -326,27 +340,25 @@ exportCsvBtn.addEventListener('click', () => {
   URL.revokeObjectURL(url);
 });
 
-// Clear history for viewingUser (teacher can do for students, student for self)
 clearHistoryBtn.addEventListener('click', () => {
   if (!viewingUser) return;
-  if (!confirm(`Clear all attendance history for ${viewingUser}? This cannot be undone.`)) return;
+  if (!confirm(`Clear attendance for ${viewingUser}? This cannot be undone.`)) return;
   users[viewingUser].attendance = [];
   saveUsers();
   renderAttendanceFor(viewingUser);
   flash('History cleared');
 });
 
-// Toggle history view
 toggleHistoryView.addEventListener('click', () => {
   historyViewCompact = !historyViewCompact;
   if (viewingUser) renderHistory(users[viewingUser].attendance);
 });
 
-// Logout
+// --- Logout / flash / clock / particles etc. ---
 $('logoutBtn').addEventListener('click', () => {
   logout();
 });
-function logout(){
+function logout() {
   currentUser = null;
   viewingUser = null;
   saveCurrent();
@@ -355,7 +367,6 @@ function logout(){
   resetAuthUI();
 }
 
-// Flash message
 function flash(msg) {
   const t = document.createElement('div');
   t.textContent = msg;
@@ -371,84 +382,86 @@ function flash(msg) {
   document.body.appendChild(t);
   setTimeout(() => {
     t.style.transition = '200ms';
-    t.style.opacity = 0;
+    t.style.opacity = '0';
     setTimeout(() => t.remove(), 220);
   }, 1600);
 }
 
-// Auto-login
 if (currentUser && users[currentUser]) {
   openDashboard();
 }
 
-// Clock
-function updateClock(){
-  const now = new Date();
-  const s = now.toLocaleTimeString();
-  clockNode.textContent = s;
+function updateClock() {
+  clockNode.textContent = new Date().toLocaleTimeString();
 }
 setInterval(updateClock, 1000);
 updateClock();
 
-// Particles background
+// Particle background (you can reuse your existing code or improved version)
 const canvas = document.getElementById('particles');
 const ctx = canvas.getContext('2d');
-let W = canvas.width = innerWidth;
-let H = canvas.height = innerHeight;
+let W = canvas.width = window.innerWidth;
+let H = canvas.height = window.innerHeight;
 window.addEventListener('resize', () => {
-  W = canvas.width = innerWidth;
-  H = canvas.height = innerHeight;
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
   initParticles();
 });
-
-class P {
-  constructor(){
+class Particle {
+  constructor() {
     this.reset();
   }
-  reset(){
+  reset() {
     this.x = Math.random() * W;
     this.y = Math.random() * H;
-    this.r = Math.random() * 1.8 + 0.6;
-    this.vx = (Math.random() - 0.5) * 0.3;
-    this.vy = (Math.random() - 0.5) * 0.3;
-    this.h = Math.floor(Math.random() * 360);
-    this.a = 0.06 + Math.random() * 0.25;
+    this.r = Math.random() * 2 + 0.5;
+    this.speedX = (Math.random() - 0.5) * 0.2;
+    this.speedY = (Math.random() - 0.5) * 0.2;
+    this.opacity = Math.random() * 0.5 + 0.3;
   }
-  step(){
-    this.x += this.vx;
-    this.y += this.vy;
-    if (this.x < 0 || this.x > W || this.y < 0 || this.y > H) this.reset();
+  update() {
+    this.x += this.speedX;
+    this.y += this.speedY;
+    if (this.x < -this.r) this.x = W + this.r;
+    if (this.x > W + this.r) this.x = -this.r;
+    if (this.y < -this.r) this.y = H + this.r;
+    if (this.y > H + this.r) this.y = -this.r;
   }
-  draw(){
+  draw() {
     ctx.beginPath();
-    ctx.fillStyle = `hsla(${this.h},70%,60%,${this.a})`;
-    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,255,255,${this.opacity})`;
     ctx.fill();
   }
 }
 
-let parts = [];
-function initParticles(){
-  parts = [];
-  const count = Math.floor(Math.min(120, (W * H) / 80000));
-  for (let i = 0; i < count; i++){
-    parts.push(new P());
+let particles = [];
+function initParticles() {
+  particles = [];
+  const num = Math.floor(Math.min(200, (W * H) / 20000));
+  for (let i = 0; i < num; i++) {
+    particles.push(new Particle());
   }
 }
-function anim(){
+function animateParticles() {
   ctx.clearRect(0, 0, W, H);
-  for (const p of parts){
-    p.step();
+  for (const p of particles) {
+    p.update();
     p.draw();
   }
-  requestAnimationFrame(anim);
+  requestAnimationFrame(animateParticles);
 }
 initParticles();
-anim();
+animateParticles();
 
-// If no users exist, seed a demo teacher
+// If no users initially, seed a demo teacher
 if (Object.keys(users).length === 0) {
-  users['demo_teacher'] = { password: 'demo', role: 'teacher', attendance: [], created: todayISO() };
+  users['demo_teacher'] = {
+    password: 'demo',
+    role: 'teacher',
+    attendance: [],
+    created: todayISO()
+  };
   saveUsers();
 }
 
