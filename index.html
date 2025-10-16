@@ -35,6 +35,13 @@
         <h3>Login</h3>
         <input id="loginUsername" placeholder="Username" required />
         <input id="loginPassword" type="password" placeholder="Password" required />
+        <label>
+          Role:
+          <select id="loginRole">
+            <option value="student">Student</option>
+            <option value="teacher">Teacher</option>
+          </select>
+        </label>
         <div class="row">
           <button id="loginSubmit" class="btn primary full">Login</button>
         </div>
@@ -45,6 +52,13 @@
         <h3>Create account</h3>
         <input id="regUsername" placeholder="Choose a username" required />
         <input id="regPassword" type="password" placeholder="Create a password" required />
+        <label>
+          Role:
+          <select id="regRole">
+            <option value="student">Student</option>
+            <option value="teacher">Teacher</option>
+          </select>
+        </label>
         <div class="row">
           <button id="registerSubmit" class="btn accent full">Create</button>
         </div>
@@ -70,7 +84,7 @@
         <div class="stat-card">
           <div class="stat-title">Attendance (30d)</div>
           <div class="donut-wrap">
-            <!-- donut SVG updated by JS -->
+            <!-- donut SVG -->
             <svg id="donut" viewBox="0 0 36 36" class="donut">
               <path class="donut-bg" d="M18 2.0845
                 a 15.9155 15.9155 0 0 1 0 31.831
