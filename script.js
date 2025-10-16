@@ -1,11 +1,13 @@
 /* -----------------------
    Smart Attendance v2
    + role-based (teacher vs student)
+   + teacher can view all students and mark for them
+   + formatted date in history (day Month year)
    ----------------------- */
 
 const $ = id => document.getElementById(id);
 
-// Element references
+// Elements
 const showLogin = $('showLogin');
 const showRegister = $('showRegister');
 const authOptions = $('authOptions');
@@ -21,24 +23,24 @@ const registerSubmit = $('registerSubmit');
 const goRegister = $('goRegister');
 const goLogin = $('goLogin');
 
-const loginRole = $('loginRole');  // new
-const regRole = $('regRole');      // new
+const loginRole = $('loginRole');
+const regRole = $('regRole');
 
 const dashboardCard = $('dashboardCard');
 const authCard = $('authCard');
 const welcomeUser = $('welcomeUser');
 const joinedAt = $('joinedAt');
 
-const markBtn = $('markBtn');
-const logoutBtn = $('logoutBtn');
-const exportCsvBtn = $('exportCsvBtn');
+const teacherControls = $('teacherControls');
+const studentList = $('studentList');
 
+const attendanceSection = $('attendanceSection');
+const markBtn = $('markBtn');
+const exportCsvBtn = $('exportCsvBtn');
 const donutValue = $('donutValue');
 const donutText = $('donutText');
 const streakVal = $('streakVal');
 const totalPresent = $('totalPresent');
-const periodInfo = $('periodInfo');
-
 const historyList = $('historyList');
 const toggleHistoryView = $('toggleHistoryView');
 const clearHistoryBtn = $('clearHistoryBtn');
@@ -46,19 +48,30 @@ const clearHistoryBtn = $('clearHistoryBtn');
 const themeToggle = $('themeToggle');
 const clockNode = $('clock');
 
-// App state
+// State
 let users = JSON.parse(localStorage.getItem('sas_users') || '{}');
 let currentUser = localStorage.getItem('sas_current') || null;
 let historyViewCompact = true;
+let viewingUser = null;  // For teacher: which student is currently in view
 
-// Utilities
+// Utils
 function saveUsers(){ localStorage.setItem('sas_users', JSON.stringify(users)); }
 function saveCurrent(){
-  if(currentUser) localStorage.setItem('sas_current', currentUser);
+  if (currentUser) localStorage.setItem('sas_current', currentUser);
   else localStorage.removeItem('sas_current');
 }
 function todayISO(){ const d = new Date(); return d.toISOString().slice(0,10); }
-function isoToDisplay(iso){ const d = new Date(iso); return d.toLocaleDateString(); }
+function isoToDisplay(iso) {
+  const d = new Date(iso);
+  const day = d.getDate();
+  const monthNames = [
+    "January","February","March","April","May","June",
+    "July","August","September","October","November","December"
+  ];
+  const month = monthNames[d.getMonth()];
+  const year = d.getFullYear();
+  return `${day} ${month} ${year}`;
+}
 
 // Auth UI
 function showLoginForm(){
@@ -77,51 +90,47 @@ function resetAuthUI(){
   registerForm.classList.add('hidden');
 }
 
-// Hook UI buttons
 showLogin.addEventListener('click', showLoginForm);
 showRegister.addEventListener('click', showRegisterForm);
 goRegister.addEventListener('click', showRegisterForm);
 goLogin.addEventListener('click', showLoginForm);
 
-// Register
-registerSubmit.addEventListener('click', (e) => {
+registerSubmit.addEventListener('click', e => {
   e.preventDefault();
   const u = regUsername.value.trim();
   const p = regPassword.value.trim();
   const r = regRole.value;
-  if(!u || !p){
+  if (!u || !p) {
     alert('Enter username & password');
     return;
   }
-  if(users[u]){
+  if (users[u]) {
     alert('User exists — choose another username');
     return;
   }
   users[u] = { password: p, role: r, attendance: [], created: todayISO() };
   saveUsers();
   alert('Account created. Log in now.');
-  // reset
   regUsername.value = '';
   regPassword.value = '';
   regRole.value = 'student';
   showLoginForm();
 });
 
-// Login
-loginSubmit.addEventListener('click', (e) => {
+loginSubmit.addEventListener('click', e => {
   e.preventDefault();
   const u = loginUsername.value.trim();
   const p = loginPassword.value.trim();
   const r = loginRole.value;
-  if(!u || !p){
+  if (!u || !p) {
     alert('Enter username & password');
     return;
   }
-  if(!users[u] || users[u].password !== p){
+  if (!users[u] || users[u].password !== p) {
     alert('Invalid credentials');
     return;
   }
-  if(users[u].role !== r){
+  if (users[u].role !== r) {
     alert(`You are not a ${r}. Please login with correct role.`);
     return;
   }
@@ -133,7 +142,7 @@ loginSubmit.addEventListener('click', (e) => {
   openDashboard();
 });
 
-// Dashboard / Profile
+// Dashboard & rendering
 function openDashboard(){
   authCard.classList.add('hidden');
   dashboardCard.classList.remove('hidden');
@@ -141,31 +150,64 @@ function openDashboard(){
 }
 
 function renderDashboard(){
-  if(!currentUser || !users[currentUser]) {
+  if (!currentUser || !users[currentUser]) {
     logout();
     return;
   }
-  const udata = users[currentUser];
-  welcomeUser.textContent = `Welcome, ${currentUser} (${udata.role})`;
-  joinedAt.textContent = `Joined: ${new Date(udata.created).toLocaleDateString()}`;
+  const me = users[currentUser];
+  welcomeUser.textContent = `Welcome, ${currentUser} (${me.role})`;
+  joinedAt.textContent = `Joined: ${new Date(me.created).toLocaleDateString()}`;
 
+  // If teacher, show student list
+  if (me.role === 'teacher') {
+    teacherControls.classList.remove('hidden');
+    attendanceSection.classList.add('hidden');
+    renderStudentList();
+  } else {
+    // student view: show their own attendance section
+    teacherControls.classList.add('hidden');
+    attendanceSection.classList.remove('hidden');
+    viewingUser = currentUser;
+    renderAttendanceFor(viewingUser);
+  }
+}
+
+// Render list of students
+function renderStudentList() {
+  studentList.innerHTML = '';
+  for (const uname in users) {
+    if (users[uname].role === 'student') {
+      const btn = document.createElement('div');
+      btn.className = 'student-item';
+      btn.textContent = uname;
+      btn.addEventListener('click', () => {
+        viewingUser = uname;
+        attendanceSection.classList.remove('hidden');
+        renderAttendanceFor(uname);
+      });
+      studentList.appendChild(btn);
+    }
+  }
+}
+
+// Render attendance view for a particular user
+function renderAttendanceFor(uname) {
+  const udata = users[uname];
+  if (!udata) return;
   const attendance = (udata.attendance || []).slice().sort();
+
   totalPresent.textContent = attendance.length;
 
-  // Last 30 days percent
   const last30 = lastNDaysList(30);
   const presentLast30 = last30.filter(d => attendance.includes(d)).length;
   const pct = Math.round((presentLast30 / last30.length) * 100);
   updateDonut(pct);
-  periodInfo.textContent = `Showing ${last30.length} days`;
 
-  // Streak
   streakVal.textContent = calcStreak(attendance);
 
-  // History list
   renderHistory(attendance);
 
-  // Mark button: by default, enable/disable by whether already marked
+  // Mark attendance button logic
   if (attendance.includes(todayISO())) {
     markBtn.classList.add('outline');
     markBtn.textContent = 'Marked Today ✓';
@@ -175,22 +217,16 @@ function renderDashboard(){
     markBtn.textContent = 'Mark Attendance';
     markBtn.disabled = false;
   }
-
-  // If current user is not teacher, disable mark always
-  if (udata.role !== 'teacher') {
-    markBtn.disabled = true;
-    markBtn.classList.add('outline');
-    markBtn.textContent = 'Only teacher can mark';
-  }
 }
 
-function updateDonut(pct){
+// Utility: donut update
+function updateDonut(pct) {
   donutValue.setAttribute('stroke-dasharray', `${pct} ${100 - pct}`);
   donutText.textContent = `${pct}%`;
   donutValue.style.transition = 'stroke-dasharray 700ms cubic-bezier(.2,.9,.2,1)';
 }
 
-function lastNDaysList(n){
+function lastNDaysList(n) {
   const arr = [];
   const now = new Date();
   for (let i = n - 1; i >= 0; i--) {
@@ -201,7 +237,7 @@ function lastNDaysList(n){
   return arr;
 }
 
-function calcStreak(attArr){
+function calcStreak(attArr) {
   if (!attArr.length) return 0;
   const s = new Set(attArr);
   let streak = 0;
@@ -218,7 +254,7 @@ function calcStreak(attArr){
   return streak;
 }
 
-function renderHistory(attendance){
+function renderHistory(attendance) {
   historyList.innerHTML = '';
   const display = attendance.slice().reverse();
   if (display.length === 0) {
@@ -247,18 +283,16 @@ function renderHistory(attendance){
   }
 }
 
-// Mark attendance
+// Mark attendance (for current viewingUser), only teacher allowed
 markBtn.addEventListener('click', () => {
-  if (!currentUser || !users[currentUser]) {
-    alert('Not logged in');
-    return;
-  }
-  const udata = users[currentUser];
-  // Only teacher can mark
-  if (udata.role !== 'teacher') {
+  if (!currentUser) return;
+  const me = users[currentUser];
+  if (me.role !== 'teacher' && currentUser !== viewingUser) {
     alert('Only teacher can mark attendance');
     return;
   }
+  if (!viewingUser) return;
+  const udata = users[viewingUser];
   const iso = todayISO();
   if (udata.attendance.includes(iso)) {
     alert('Already marked today');
@@ -266,62 +300,63 @@ markBtn.addEventListener('click', () => {
   }
   udata.attendance.push(iso);
   udata.attendance = Array.from(new Set(udata.attendance)).sort();
-  users[currentUser] = udata;
+  users[viewingUser] = udata;
   saveUsers();
-  renderDashboard();
-  flash('Attendance marked for today ✅');
+  renderAttendanceFor(viewingUser);
+  flash(`Marked attendance for ${viewingUser} ✅`);
 });
 
-// Export CSV
+// Export CSV for current viewingUser
 exportCsvBtn.addEventListener('click', () => {
-  if (!currentUser) return;
-  const u = users[currentUser];
+  if (!viewingUser) return;
+  const u = users[viewingUser];
   const rows = [['username','date_iso','date_display']];
   (u.attendance || []).forEach(iso => {
-    rows.push([currentUser, iso, isoToDisplay(iso)]);
+    rows.push([viewingUser, iso, isoToDisplay(iso)]);
   });
   const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${currentUser}_attendance.csv`;
+  a.download = `${viewingUser}_attendance.csv`;
   document.body.appendChild(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
 });
 
-// Clear history
+// Clear history for viewingUser (teacher can do for students, student for self)
 clearHistoryBtn.addEventListener('click', () => {
-  if (!currentUser) return;
-  if (!confirm('Clear all attendance history for your account? This cannot be undone.')) return;
-  users[currentUser].attendance = [];
+  if (!viewingUser) return;
+  if (!confirm(`Clear all attendance history for ${viewingUser}? This cannot be undone.`)) return;
+  users[viewingUser].attendance = [];
   saveUsers();
-  renderDashboard();
+  renderAttendanceFor(viewingUser);
   flash('History cleared');
 });
 
 // Toggle history view
 toggleHistoryView.addEventListener('click', () => {
   historyViewCompact = !historyViewCompact;
-  renderDashboard();
+  if (viewingUser) renderHistory(users[viewingUser].attendance);
 });
 
 // Logout
-logoutBtn.addEventListener('click', () => {
+$('logoutBtn').addEventListener('click', () => {
   logout();
 });
 function logout(){
   currentUser = null;
+  viewingUser = null;
   saveCurrent();
   dashboardCard.classList.add('hidden');
   authCard.classList.remove('hidden');
   resetAuthUI();
 }
 
-// Flash toast
-function flash(msg){
+// Flash message
+function flash(msg) {
   const t = document.createElement('div');
   t.textContent = msg;
   t.style.position = 'fixed';
@@ -341,15 +376,10 @@ function flash(msg){
   }, 1600);
 }
 
-// Auto-login if valid
+// Auto-login
 if (currentUser && users[currentUser]) {
   openDashboard();
 }
-
-// Dark / light toggle
-themeToggle.addEventListener('click', () => {
-  document.body.classList.toggle('light');
-});
 
 // Clock
 function updateClock(){
@@ -416,14 +446,14 @@ function anim(){
 initParticles();
 anim();
 
-// Demo user (if none)
-if (Object.keys(users).length === 0){
-  users['demo'] = { password: 'demo', role: 'teacher', attendance: [], created: todayISO() };
+// If no users exist, seed a demo teacher
+if (Object.keys(users).length === 0) {
+  users['demo_teacher'] = { password: 'demo', role: 'teacher', attendance: [], created: todayISO() };
   saveUsers();
 }
 
-// Clean up invalid current
-if (currentUser && !users[currentUser]){
+// Cleanup invalid current
+if (currentUser && !users[currentUser]) {
   currentUser = null;
   saveCurrent();
 }
