@@ -8,7 +8,7 @@
 </head>
 <body>
   <div class="bg-gradient"></div>
-  <canvas id="particles"></canvas>
+  <canvas id="particles" class="particle-canvas"></canvas>
 
   <header class="topbar">
     <div class="brand">Smart Attendance <span class="muted">v2</span></div>
@@ -22,7 +22,35 @@
     <section class="card auth-card" id="authCard">
       <h1 class="title">Welcome</h1>
 
-      <div id="authOptions" class="auth-options">
+      <!-- Club + event selection UI -->
+      <div id="clubSelectDiv" class="club-select-container">
+        <p class="club-instruction">Select your Club & Event</p>
+        <div class="club-row">
+          <label class="styled-label">
+            Club
+            <select id="clubSelect" class="styled-select">
+              <option value="" disabled selected>Choose club</option>
+              <option value="tech">Tech Geeks Club</option>
+              <option value="cultural">Pratyay Cultural Club</option>
+              <option value="sports">Sports Club</option>
+            </select>
+          </label>
+        </div>
+        <div id="subOptionDiv" class="club-row hidden">
+          <label class="styled-label">
+            Event / Sub-Group
+            <select id="subOptionSelect" class="styled-select">
+              <option value="" disabled selected>Choose event</option>
+            </select>
+          </label>
+        </div>
+        <div class="club-row">
+          <button id="clubContinueBtn" class="btn primary full" disabled>Continue</button>
+        </div>
+      </div>
+
+      <!-- After club selected, show login/register -->
+      <div id="authOptions" class="auth-options hidden">
         <button id="showLogin" class="btn primary">Login</button>
         <button id="showRegister" class="btn accent">Register</button>
       </div>
@@ -74,17 +102,16 @@
       </div>
 
       <div id="teacherControls" class="teacher-controls hidden">
-        <h3>Student List</h3>
-        <div id="studentList" class="student-list">
-          <!-- JS will list students -->
-        </div>
+        <h3>Students</h3>
+        <div id="studentList" class="student-list"></div>
       </div>
 
       <div id="attendanceSection" class="attendance-section hidden">
         <div class="dashboard-actions">
-          <button id="markBtn" class="btn primary">Mark Attendance</button>
+          <button id="markBtn" class="btn primary hidden">Mark Attendance</button>
           <button id="exportCsvBtn" class="btn outline">Export CSV</button>
         </div>
+
         <div class="grid-3">
           <div class="stat-card">
             <div class="stat-title">Attendance (30d)</div>
@@ -100,13 +127,11 @@
               </svg>
             </div>
           </div>
-
           <div class="stat-card">
             <div class="stat-title">Current Streak</div>
             <div class="stat-value" id="streakVal">0</div>
             <div class="muted small">Days in a row</div>
           </div>
-
           <div class="stat-card">
             <div class="stat-title">Total Present</div>
             <div class="stat-value" id="totalPresent">0</div>
@@ -121,13 +146,9 @@
               <button id="clearHistoryBtn" class="btn small danger">Clear History</button>
             </div>
           </div>
-
-          <div id="historyList" class="history-list">
-            <!-- JS will populate -->
-          </div>
+          <div id="historyList" class="history-list"></div>
         </div>
       </div>
-
     </section>
   </main>
 
